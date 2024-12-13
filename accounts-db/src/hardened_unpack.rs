@@ -382,10 +382,6 @@ where
         }
     }
 
-    if !need_unpack {
-        return Ok(());
-    }
-
     let mut i = 0;
 
     unpack_archive(
