@@ -363,6 +363,8 @@ where
     // Check if any account path already has files
     for account_path in account_paths {
         let accounts_dir = account_path.join("accounts");
+        info!("Accounts directory {:?} ", accounts_dir);
+               
         if accounts_dir.exists() {
             // If directory exists and has files, skip unpacking
             if accounts_dir.read_dir().map_or(false, |mut dir| dir.next().is_some()) {
