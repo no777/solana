@@ -1391,33 +1391,15 @@ fn unarchive_snapshot(
         .tempdir_in(bank_snapshots_dir)?;
     let unpacked_snapshots_dir = unpack_dir.path().join("snapshots");
 
-    let mut need_unpack: bool = true;
-    // Check if any account path already has files
-    for account_path in account_paths {
-        let accounts_dir = account_path;
-        info!("Accounts directory {:?} ", accounts_dir);
-                
-        if accounts_dir.exists() {
-            // If directory exists and has files, skip unpacking
-            if accounts_dir.read_dir().map_or(false, |mut dir| dir.next().is_some()) {
-                info!("Accounts directory {:?} already has files, skipping unpack", accounts_dir);
-                need_unpack = false;
-            }
-        }
-    }
-
-
     let (file_sender, file_receiver) = crossbeam_channel::unbounded();
-    if need_unpack {
-        streaming_unarchive_snapshot(
-            file_sender,
-            account_paths.to_vec(),
-            unpack_dir.path().to_path_buf(),
-            snapshot_archive_path.as_ref().to_path_buf(),
-            archive_format,
-            parallel_divisions,
-        );
-    }
+    streaming_unarchive_snapshot(
+        file_sender,
+        account_paths.to_vec(),
+        unpack_dir.path().to_path_buf(),
+        snapshot_archive_path.as_ref().to_path_buf(),
+        archive_format,
+        parallel_divisions,
+    );
 
     let num_rebuilder_threads = num_cpus::get_physical()
         .saturating_sub(parallel_divisions)

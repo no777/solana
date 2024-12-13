@@ -86,6 +86,7 @@ pub enum UnpackPath<'a> {
 }
 
 fn unpack_archive<'a, A, C, D>(
+    need_unpack:bool,
     archive: &mut Archive<A>,
     apparent_limit_size: u64,
     actual_limit_size: u64,
@@ -175,8 +176,10 @@ where
             continue; // skip it
         };
 
-        let unpack = entry.unpack(&entry_path);
-        check_unpack_result(unpack.map(|_unpack| true)?, path_str)?;
+        if need_unpack {
+            let unpack = entry.unpack(&entry_path);
+            check_unpack_result(unpack.map(|_unpack| true)?, path_str)?;
+        }
 
         // Sanitize permissions.
         let mode = match entry.header().entry_type() {
@@ -331,6 +334,9 @@ pub fn streaming_unpack_snapshot<A: Read>(
     parallel_selector: Option<ParallelSelector>,
     sender: &crossbeam_channel::Sender<PathBuf>,
 ) -> Result<()> {
+
+
+ 
     unpack_snapshot_with_processors(
         archive,
         ledger_dir,
@@ -360,11 +366,30 @@ where
 {
     assert!(!account_paths.is_empty());
     
+    let mut need_unpack: bool = true;
+    // Check if any account path already has files
+    for account_path in account_paths {
+        let accounts_dir = account_path;
+        info!("Accounts directory {:?} ", accounts_dir);
+                
+        if accounts_dir.exists() {
+            // If directory exists and has files, skip unpacking
+            if accounts_dir.read_dir().map_or(false, |mut dir| dir.next().is_some()) {
+                info!("Accounts directory {:?} already has files, skipping unpack", accounts_dir);
+                need_unpack = false;
+                break;
+            }
+        }
+    }
 
+    if !need_unpack {
+        return Ok(());
+    }
 
     let mut i = 0;
 
     unpack_archive(
+        need_unpack,
         archive,
         MAX_SNAPSHOT_ARCHIVE_UNPACKED_APPARENT_SIZE,
         MAX_SNAPSHOT_ARCHIVE_UNPACKED_ACTUAL_SIZE,
@@ -515,6 +540,7 @@ fn unpack_genesis<A: Read>(
     max_genesis_archive_unpacked_size: u64,
 ) -> Result<()> {
     unpack_archive(
+        true,
         archive,
         max_genesis_archive_unpacked_size,
         max_genesis_archive_unpacked_size,
